@@ -1,4 +1,8 @@
 import { upsertPendingRedemptionFromEventSub, type EventSubRedemptionEvent } from "@/lib/channel-redemptions";
+import {
+  handleTwitchStreamOfflineEvent,
+  handleTwitchStreamOnlineEvent
+} from "@/lib/analytics/broadcastSessions";
 import { verifyTwitchEventSubSignature } from "@/lib/twitch-eventsub-webhook";
 
 export const dynamic = "force-dynamic";
@@ -45,11 +49,18 @@ export async function POST(req: Request) {
     try {
       const body = JSON.parse(rawBody) as {
         subscription?: { type?: string };
-        event?: EventSubRedemptionEvent;
+        event?: EventSubRedemptionEvent & {
+          broadcaster_user_id?: string;
+          started_at?: string;
+        };
       };
       const subType = body.subscription?.type;
       if (subType === "channel.channel_points_custom_reward_redemption.add" && body.event) {
         await upsertPendingRedemptionFromEventSub(body.event);
+      } else if (subType === "stream.online" && body.event?.broadcaster_user_id) {
+        await handleTwitchStreamOnlineEvent(body.event.broadcaster_user_id, body.event.started_at);
+      } else if (subType === "stream.offline" && body.event?.broadcaster_user_id) {
+        await handleTwitchStreamOfflineEvent(body.event.broadcaster_user_id);
       }
     } catch {
       return new Response("bad payload", { status: 400 });

@@ -29,8 +29,75 @@ model User {
   botCommands      BotCommand[]
   botSettings      BotSettings[]
 
+  /** Daily rollups from Twitch CSV exports + manual backfill. */
+  channelAnalyticsSummaries ChannelAnalyticsSummary[]
+  /** 5-minute live audience + chat velocity samples while a session is active. */
+  streamSnapshots           StreamSnapshot[]
+  /** One open row per broadcaster while EventSub reports the channel live. */
+  liveBroadcastSessions     LiveBroadcastSession[]
+
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+}
+
+/**
+ * One row per calendar day per user — populated from Twitch Channel Analytics CSV imports
+ * and/or future nightly aggregation jobs. Powers KPI cards + day-resolution charts.
+ */
+model ChannelAnalyticsSummary {
+  id               String   @id @default(cuid())
+  userId           String
+  date             DateTime @db.Date
+  avgViewers       Float    @default(0)
+  maxViewers       Int      @default(0)
+  follows          Int      @default(0)
+  subs             Int      @default(0)
+  revenue          Float    @default(0)
+  minutesStreamed  Int      @default(0)
+  liveViews        Int      @default(0)
+  uniqueChatters   Int      @default(0)
+  clipsCreated     Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+/**
+ * Fine-grained samples (cron / worker every ~5 min while live). Merged into charts when
+ * daily summaries are missing for that period.
+ */
+model StreamSnapshot {
+  id                  String   @id @default(cuid())
+  userId              String
+  channelTwitchId     String
+  timestamp           DateTime
+  currentViewers      Int      @default(0)
+  messagesPerMinute   Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([channelTwitchId, timestamp])
+}
+
+/**
+ * Tracks an active go-live window for cron-based Helix polling. Opened on `stream.online`,
+ * closed on `stream.offline`.
+ */
+model LiveBroadcastSession {
+  id                  String    @id @default(cuid())
+  userId              String
+  channelTwitchId     String
+  startedAt           DateTime
+  endedAt             DateTime?
+  lastSnapshotAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, endedAt])
+  @@index([channelTwitchId, startedAt])
 }
 
 model DashboardLayout {

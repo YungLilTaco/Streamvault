@@ -63,6 +63,18 @@ export const EVENTSUB_SUBSCRIPTION_DEFS: EventSubSubscriptionDef[] = [
     requiredAnyScope: []
   },
   {
+    type: "stream.online",
+    version: "1",
+    condition: (id) => ({ broadcaster_user_id: id }),
+    requiredAnyScope: []
+  },
+  {
+    type: "stream.offline",
+    version: "1",
+    condition: (id) => ({ broadcaster_user_id: id }),
+    requiredAnyScope: []
+  },
+  {
     type: "channel.channel_points_custom_reward_redemption.add",
     version: "1",
     condition: (id) => ({ broadcaster_user_id: id }),

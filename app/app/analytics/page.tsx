@@ -1,25 +1,10 @@
-import { AppPage } from "@/components/app/AppPage";
-import { auth } from "@/auth";
+import { Suspense } from "react";
+import { AnalyticsPageClient } from "@/components/analytics/AnalyticsPageClient";
 
-export default async function Page({
-  searchParams
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const session = await auth();
-  const sp = (await searchParams) ?? {};
-  const channel = typeof sp.channel === "string" ? sp.channel : null;
-
+export default function AnalyticsPage() {
   return (
-    <AppPage
-      title="Analytics"
-      description="Performance insights that matter: retention, conversion, and what drives chat velocity."
-    >
-      <div className="text-sm text-white/70">
-        Current channel context:{" "}
-        <span className="font-mono text-white/85">{channel ?? session?.user?.name ?? "Unknown"}</span>
-      </div>
-    </AppPage>
+    <Suspense fallback={<div className="min-w-0 flex-1 px-4 py-10 text-sm text-white/55">Loading analytics…</div>}>
+      <AnalyticsPageClient />
+    </Suspense>
   );
 }
-
